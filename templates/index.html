@@ -3,126 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Descargas Taki - Música y Videos de YouTube</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            color: #f8fafc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            background-color: #1e293b; padding: 35px 28px;
-            border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            max-width: 480px; width: 100%; text-align: center; border: 1px solid #334155;
-        }
-        .brand-logo { font-size: 28px; font-weight: 800; color: #38bdf8; margin-bottom: 6px; }
-        .brand-logo span { color: #a855f7; }
-        .subtitle { font-size: 14px; color: #94a3b8; margin-bottom: 15px; }
-        .counter-badge {
-            background-color: #334155; color: #38bdf8; padding: 6px 14px;
-            border-radius: 20px; font-size: 13px; display: inline-block; margin-bottom: 20px; font-weight: 600;
-        }
-        input[type="text"] {
-            width: 100%; padding: 14px 16px; margin-bottom: 12px;
-            border: 2px solid #334155; border-radius: 10px; background-color: #0f172a; color: #ffffff; font-size: 15px; outline: none;
-        }
-        .btn-group { display: flex; gap: 10px; }
-        .btn-group button {
-            flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; color: white; cursor: pointer;
-        }
-        .btn-video { background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%); }
-        .btn-audio { background: linear-gradient(90deg, #a855f7 0%, #7e22ce 100%); }
-        .btn-verify {
-            width: 100%; background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
-            color: white; padding: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer;
-        }
-        .yape-card {
-            margin-top: 25px; padding: 20px 15px;
-            background: linear-gradient(180deg, #2e1065 0%, #1e1b4b 100%);
-            border: 2px solid #7e22ce; border-radius: 14px; text-align: center;
-        }
-        .yape-card.alert { border-color: #ef4444; background: linear-gradient(180deg, #450a0a 0%, #1e1b4b 100%); }
-        .yape-card h3 { margin-bottom: 6px; color: #e9d5ff; font-size: 17px; }
-        .yape-card p { color: #c084fc; font-size: 13px; margin-bottom: 12px; }
-        .yape-card img { width: 170px; height: 170px; border-radius: 12px; object-fit: cover; border: 3px solid #a855f7; margin-bottom: 10px; }
-        .flash-msg { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
-        .flash-success { background: #065f46; color: #6ee7b7; }
-        .flash-error, .flash-limit { background: #991b1b; color: #fca5a5; }
-    </style>
+    <title>Descargas Taki - Música y Videos Gratis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
 
-<div class="container">
-    <div class="brand-logo">Descargas <span>Taki</span> 🚀</div>
-    <p class="subtitle">Plataforma de música y videos</p>
-
-    <!-- Mensajes de alerta -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="flash-msg flash-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    {% if pase == 'si' %}
-        <div class="counter-badge" style="background-color: #065f46; color: #6ee7b7;">
-            ✨ ¡Acceso Ilimitado Activado!
-        </div>
-    {% else %}
-        <div class="counter-badge">
-            Llevas {{ descargas }} de {{ limite }} descargas gratuitas
-        </div>
-    {% endif %}
-
-    {% if bloqueado %}
-        <div class="yape-card alert">
-            <h3 style="color: #fca5a5;">⚠️ Límite alcanzado</h3>
-            <p style="color: #fecaca;">Yapea <strong>S/ 1.00</strong> para desbloquear descargas ilimitadas o <strong>S/ 5.00</strong> para el Pack de Mixes completos.</p>
+    <div class="max-w-md w-full bg-gray-800 rounded-2xl shadow-2xl p-6 border border-gray-700">
+        
+        <!-- Encabezado -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-blue-400 flex items-center justify-center gap-2">
+                Descargas Taki 🚀
+            </h1>
+            <p class="text-gray-400 text-sm mt-1">Plataforma de música y videos</p>
             
-            <img src="{{ url_for('static', filename='qr_yape.png') }}" alt="QR Yape">
-
-            <form method="POST">
-                <input type="hidden" name="accion" value="verificar_yape">
-                <input type="text" name="num_operacion" placeholder="N° de operación de Yape" required style="text-align: center;">
-                <select name="monto" style="width: 100%; padding: 10px; margin-bottom: 12px; background: #0f172a; color: white; border-radius: 8px; border: 2px solid #334155;">
-                    <option value="1.00">S/ 1.00 - Desbloqueo Normal</option>
-                    <option value="5.00">S/ 5.00 - Pack Mixes / Full Música</option>
-                </select>
-                <button type="submit" class="btn-verify">Enviar Código para Validación</button>
-            </form>
-
-            <div style="margin-top: 15px;">
-                <a href="/revisar-acceso/INGRESA_TU_CODIGO" onclick="let c=prompt('Ingresa el N° de operación que registraste:'); if(c) this.href='/revisar-acceso/'+c; else return false;" style="color: #38bdf8; font-size: 13px; text-decoration: underline;">¿Ya te aprobé? Haz clic aquí para activar tu acceso</a>
+            <!-- Contador de descargas -->
+            <div class="mt-3 inline-block bg-gray-700/60 px-4 py-1.5 rounded-full text-xs font-semibold text-blue-300 border border-blue-500/30">
+                Llevas {{ descargas }} de 5 descargas gratuitas
             </div>
         </div>
-    {% else %}
-        <form method="POST">
-            <input type="hidden" name="accion" value="descargar">
-            <input type="text" name="url" placeholder="Pega aquí el enlace de YouTube..." required>
-            <div class="btn-group">
-                <button type="submit" name="tipo" value="video" class="btn-video">🎬 Video (MP4)</button>
-                <button type="submit" name="tipo" value="audio" class="btn-audio">🎵 Música (MP3)</button>
+
+        <!-- Mensaje de estado o alerta -->
+        {% if mensaje %}
+        <div class="mb-4 p-3 bg-red-900/60 border border-red-500 rounded-lg text-red-200 text-sm text-center">
+            {{ mensaje }}
+        </div>
+        {% endif %}
+
+        <!-- Formulario de Descarga -->
+        <form method="POST" action="/" class="space-y-4">
+            
+            <div>
+                <input type="text" name="url" placeholder="Pega aquí el enlace de YouTube..." required 
+                       class="w-full p-3.5 rounded-xl bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-blue-500 text-sm placeholder-gray-500 transition">
+            </div>
+
+            <!-- Bloque de Yape si llegó al límite de 5 descargas -->
+            {% if bloquear %}
+            <div class="p-4 bg-red-950/70 border border-red-500/60 rounded-xl text-center space-y-3">
+                <p class="text-xs text-red-200 font-medium">
+                    ⚠️ Has alcanzado el límite gratuito. Envía tu Yape de S/ 1.00 (o S/ 5.00 para Mixes) e ingresa el código de operación para desbloquear:
+                </p>
+                <input type="text" name="codigo_operacion" placeholder="Ejemplo: 123456" required
+                       class="w-full p-2.5 rounded-lg bg-gray-900 text-white border border-gray-600 text-center font-bold text-sm tracking-widest focus:outline-none focus:border-red-400">
+            </div>
+            {% endif %}
+
+            <!-- Botones de Acción -->
+            <div class="flex gap-3 pt-2">
+                <button type="submit" name="tipo" value="video" 
+                        class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 text-sm">
+                    🎬 Video (MP4)
+                </button>
+                <button type="submit" name="tipo" value="audio" 
+                        class="flex-1 py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 text-sm">
+                    🎵 Música (MP3)
+                </button>
             </div>
         </form>
 
-        <div class="yape-card">
-            <h3>💜 Apóyanos con Yape</h3>
-            <p>Mándanos un aporte voluntario para mantener vivo el servidor.</p>
-            <img src="{{ url_for('static', filename='qr_yape.png') }}" alt="QR Yape">
+        <!-- Sección QR Yape -->
+        <div class="mt-8 pt-6 border-t border-gray-700/60 text-center">
+            <h2 class="text-sm font-semibold text-purple-300 mb-2 flex items-center justify-center gap-1">
+                💜 Apóyanos con Yape
+            </h2>
+            <p class="text-xs text-gray-400 mb-3">Mándanos un aporte voluntario para mantener vivo el servidor.</p>
+            
+            <div class="inline-block p-2 bg-white rounded-xl shadow-md">
+                <img src="{{ url_for('static', filename='qr_yape.png') }}" alt="QR Yape" class="w-36 h-36 object-contain rounded-lg">
+            </div>
         </div>
-    {% endif %}
 
-    <div style="margin-top: 20px; font-size: 12px; color: #64748b;">
-        <a href="/admin" target="_blank" style="color: #64748b; text-decoration: none;">Panel de Administración (Eladio)</a>
+        <!-- Enlace Admin -->
+        <div class="mt-6 text-center">
+            <a href="/admin" class="text-xs text-gray-600 hover:text-gray-400 transition">Panel de Administración</a>
+        </div>
+
     </div>
-</div>
 
 </body>
 </html>
