@@ -1,9 +1,13 @@
 import os
 import sqlite3
-import requests
-from flask import Flask, render_template, request, make_response, redirect, url_for
+from flask import Flask, render_template, request, send_file, make_response, redirect, url_for
+import yt_dlp
 
 app = Flask(__name__)
+
+DOWNLOAD_FOLDER = 'downloads'
+if not os.path.exists(DOWNLOAD_FOLDER):
+    os.makedirs(DOWNLOAD_FOLDER)
 
 DB_NAME = 'database.db'
 
@@ -62,36 +66,43 @@ def index():
 
 def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
     try:
-        api_url = "https://api.cobalt.tools/api/json"
-        payload = {
-            "url": url,
-            "isAudioOnly": True if tipo == "audio" else False,
-            "audioFormat": "mp3"
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web']
+                }
+            },
+            'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
         }
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0"
-        }
-        
-        response_api = requests.post(api_url, json=payload, headers=headers, timeout=20)
-        data = response_api.json()
-        
-        # Extraer el enlace de la respuesta de Cobalt
-        target_url = data.get("url") or data.get("picker", [{}])[0].get("url")
-        
-        if target_url:
-            response = make_response(redirect(target_url))
-            if pase_activo != 'si':
-                nueva_cantidad = descargas_realizadas + 1
-                response.set_cookie('descargas_taki_count', str(nueva_cantidad), max_age=30*24*60*60)
-            return response
+
+        if tipo == "audio":
+            ydl_opts['format'] = 'bestaudio/best'
+            ydl_opts['postprocessors'] = [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
         else:
-            error_text = "No se pudo extraer el enlace. Verifica que el link de YouTube sea válido."
-            return render_template('index.html', mensaje=error_text, descargas=descargas_realizadas, bloquear=False)
+            ydl_opts['format'] = 'best[ext=mp4]/best'
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file_path = ydl.prepare_filename(info)
+            if tipo == "audio":
+                file_path = os.path.splitext(file_path)[0] + ".mp3"
+
+        response = make_response(send_file(file_path, as_attachment=True))
+        
+        if pase_activo != 'si':
+            nueva_cantidad = descargas_realizadas + 1
+            response.set_cookie('descargas_taki_count', str(nueva_cantidad), max_age=30*24*60*60)
+            
+        return response
 
     except Exception as e:
-        error_msg = f"Error de conexión con el servicio. Inténtalo nuevamente."
+        error_msg = "No se pudo procesar el enlace. Verifica que sea un video de YouTube válido."
         return render_template('index.html', mensaje=error_msg, descargas=descargas_realizadas, bloquear=False)
 
 @app.route('/enviar_pago', methods=['POST'])
