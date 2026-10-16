@@ -1,13 +1,9 @@
 import os
 import sqlite3
 import requests
-from flask import Flask, render_template, request, send_file, make_response, redirect, url_for
+from flask import Flask, render_template, request, make_response, redirect, url_for
 
 app = Flask(__name__)
-
-DOWNLOAD_FOLDER = 'downloads'
-if not os.path.exists(DOWNLOAD_FOLDER):
-    os.makedirs(DOWNLOAD_FOLDER)
 
 DB_NAME = 'database.db'
 
@@ -59,19 +55,17 @@ def index():
             
             return render_template('index.html', mensaje=mensaje, descargas=descargas_realizadas, bloquear=True)
 
-        res = procesar_descarga(url, tipo, descargas_realizadas, pase_activo)
-        return res
+        return procesar_descarga(url, tipo, descargas_realizadas, pase_activo)
 
     bloquear = True if (descargas_realizadas >= 5 and pase_activo != 'si') else False
     return render_template('index.html', mensaje=mensaje, descargas=descargas_realizadas, bloquear=bloquear)
 
 def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
     try:
-        # Usamos el motor de extracción vía API Cobalt libre de bloqueos antibot
         api_url = "https://api.cobalt.tools/api/json"
         payload = {
             "url": url,
-            "downloadMode": "audio" if tipo == "audio" else "auto",
+            "isAudioOnly": True if tipo == "audio" else False,
             "audioFormat": "mp3"
         }
         headers = {
@@ -83,30 +77,21 @@ def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
         response_api = requests.post(api_url, json=payload, headers=headers, timeout=20)
         data = response_api.json()
         
-        # Si Cobalt nos da un link de descarga directo
-        if "url" in data:
-            target_url = data["url"]
-            
-            # Redirigimos al usuario directamente a la descarga rápida
-            response = make_response(redirect(target_url))
-            if pase_activo != 'si':
-                nueva_cantidad = descargas_realizadas + 1
-                response.set_cookie('descargas_taki_count', str(nueva_cantidad), max_age=30*24*60*60)
-            return response
-            
-        elif "picker" in data and len(data["picker"]) > 0:
-            target_url = data["picker"][0]["url"]
+        # Extraer el enlace de la respuesta de Cobalt
+        target_url = data.get("url") or data.get("picker", [{}])[0].get("url")
+        
+        if target_url:
             response = make_response(redirect(target_url))
             if pase_activo != 'si':
                 nueva_cantidad = descargas_realizadas + 1
                 response.set_cookie('descargas_taki_count', str(nueva_cantidad), max_age=30*24*60*60)
             return response
         else:
-            error_text = "No se pudo extraer el enlace. Intenta con otro video de YouTube."
+            error_text = "No se pudo extraer el enlace. Verifica que el link de YouTube sea válido."
             return render_template('index.html', mensaje=error_text, descargas=descargas_realizadas, bloquear=False)
 
     except Exception as e:
-        error_msg = "Ocurrió un error al procesar el enlace. Verifica que sea un link válido de YouTube."
+        error_msg = f"Error de conexión con el servicio. Inténtalo nuevamente."
         return render_template('index.html', mensaje=error_msg, descargas=descargas_realizadas, bloquear=False)
 
 @app.route('/enviar_pago', methods=['POST'])
