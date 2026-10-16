@@ -41,7 +41,6 @@ def index():
         
         # Verificar si superó las 5 descargas y no tiene pase activo
         if descargas_realizadas >= 5 and pase_activo != 'si':
-            # Verificar si envió código de pago
             codigo_ingresado = request.form.get('codigo_operacion')
             if codigo_ingresado:
                 conn = sqlite3.connect(DB_NAME)
@@ -51,7 +50,6 @@ def index():
                 conn.close()
                 
                 if resultado and resultado[0] == 'APROBADO':
-                    # Pase aprobado, permitimos descarga y activamos cookie de pase
                     response = procesar_descarga(url, tipo, descargas_realizadas, pase_activo)
                     response.set_cookie('descargas_taki_pase', 'si', max_age=30*24*60*60)
                     return response
@@ -69,15 +67,23 @@ def index():
 
 def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
     try:
-        # Opciones avanzadas y clientes alternativos para evitar bloqueos antibot de YouTube
+        # Configuración blindada para eludir restricciones de YouTube en Render
         common_opts = {
             'quiet': True,
             'no_warnings': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'nocheckcertificate': True,
+            'ignoreerrors': False,
+            'logtostderr': False,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web', 'ios']
+                    'player_client': ['mweb', 'ios', 'android', 'web']
                 }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'es-ES,es;q=0.9',
+                'Sec-Fetch-Mode': 'navigate',
             }
         }
 
@@ -107,7 +113,6 @@ def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
 
         response = make_response(send_file(file_path, as_attachment=True))
         
-        # Incrementar contador de cookies si no tiene pase activo
         if pase_activo != 'si':
             nueva_cantidad = descargas_realizadas + 1
             response.set_cookie('descargas_taki_count', str(nueva_cantidad), max_age=30*24*60*60)
@@ -131,7 +136,7 @@ def enviar_pago():
             conn.commit()
             conn.close()
         except sqlite3.IntegrityError:
-            pass # El código ya fue registrado antes
+            pass
             
     return redirect(url_for('index'))
 
@@ -142,7 +147,7 @@ def admin():
     
     if request.method == 'POST':
         pago_id = request.form.get('pago_id')
-        accion = request.form.get('accion') # 'aprobar' o 'eliminar'
+        accion = request.form.get('accion')
         
         if accion == 'aprobar':
             cursor.execute('UPDATE pagos SET estado = "APROBADO" WHERE id = ?', (pago_id,))
@@ -154,8 +159,3 @@ def admin():
     cursor.execute('SELECT id, codigo_operacion, monto, estado FROM pagos')
     pagos = cursor.fetchall()
     conn.close()
-    
-    return render_template('admin.html', pagos=pagos)
-
-if __name__ == '__main__':
-    app.run(debug=True)
