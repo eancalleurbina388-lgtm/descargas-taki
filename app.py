@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import requests
 from flask import Flask, render_template, request, send_file, make_response, redirect, url_for
 import yt_dlp
 
@@ -31,7 +32,6 @@ init_db()
 def index():
     mensaje = None
     
-    # Control de cookies para las 5 descargas gratuitas
     descargas_realizadas = int(request.cookies.get('descargas_taki_count', 0))
     pase_activo = request.cookies.get('descargas_taki_pase', 'no')
     
@@ -39,7 +39,6 @@ def index():
         url = request.form.get('url')
         tipo = request.form.get('tipo') # 'video' o 'audio'
         
-        # Verificar si superó las 5 descargas y no tiene pase activo
         if descargas_realizadas >= 5 and pase_activo != 'si':
             codigo_ingresado = request.form.get('codigo_operacion')
             if codigo_ingresado:
@@ -67,23 +66,15 @@ def index():
 
 def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
     try:
-        # Configuración blindada para eludir restricciones de YouTube en Render
+        # Intento 1: yt-dlp con clientes integrados
         common_opts = {
             'quiet': True,
             'no_warnings': True,
             'nocheckcertificate': True,
-            'ignoreerrors': False,
-            'logtostderr': False,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['mweb', 'ios', 'android', 'web']
+                    'player_client': ['tv', 'android', 'ios']
                 }
-            },
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'es-ES,es;q=0.9',
-                'Sec-Fetch-Mode': 'navigate',
             }
         }
 
@@ -105,11 +96,32 @@ def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
             }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            file_path = ydl.prepare_filename(info)
-            if tipo == "audio":
-                file_path = os.path.splitext(file_path)[0] + ".mp3"
+        file_path = None
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file_path = ydl.prepare_filename(info)
+                if tipo == "audio":
+                    file_path = os.path.splitext(file_path)[0] + ".mp3"
+        except Exception as e_ytdlp:
+            # Intento 2: Puente API directo si YouTube bloquea la IP del servidor
+            api_url = "https://api.cobalt.tools/api/json"
+            payload = {
+                "url": url,
+                "downloadMode": "audio" if tipo == "audio" else "auto",
+                "audioFormat": "mp3"
+            }
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
+            res = requests.post(api_url, json=payload, headers=headers, timeout=15)
+            data = res.json()
+            
+            if "url" in data:
+                return redirect(data["url"])
+            else:
+                raise e_ytdlp
 
         response = make_response(send_file(file_path, as_attachment=True))
         
@@ -120,7 +132,7 @@ def procesar_descarga(url, tipo, descargas_realizadas, pase_activo):
         return response
 
     except Exception as e:
-        error_msg = f"Error al procesar: {str(e)}"
+        error_msg = f"Error al procesar la descarga. Por favor, intenta con otro enlace de YouTube."
         return render_template('index.html', mensaje=error_msg, descargas=descargas_realizadas, bloquear=False)
 
 @app.route('/enviar_pago', methods=['POST'])
@@ -159,3 +171,8 @@ def admin():
     cursor.execute('SELECT id, codigo_operacion, monto, estado FROM pagos')
     pagos = cursor.fetchall()
     conn.close()
+    
+    return render_template('admin.html', pagos=pagos)
+
+if __name__ == '__main__':
+    app.run(debug=True)
